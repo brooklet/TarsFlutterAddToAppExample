@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
+import 'package:tars_flutter/tars/channel/arguments/invoke/invoke_argument0.dart';
+import 'package:tars_flutter/tars/channel/arguments/invoke/invoke_argument1.dart';
+import 'package:tars_flutter/tars/channel/arguments/register/register_parameter1.dart';
+import 'package:tars_flutter/tars/channel/tars_message_codec.dart';
+import 'package:tars_flutter/tars/channel/tars_platform_channel.dart';
+import 'package:tars_flutter_example/tars_idl/test/TestReq.dart';
+import 'package:tars_flutter_example/tars_idl/test/TestRsp.dart';
 
-void main() => runApp(const MyApp());
+void main() => {};
+
+@pragma('vm:testPage')
+void testPage() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -45,17 +58,54 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final logger = Logger();
   int _counter = 0;
+  late TarsMethodChannel _channel;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _channel = TarsMethodChannel('test');
+    registerMethodCallHandlers();
+    _getCount();
+  }
+
+  //注册回调函数
+  void registerMethodCallHandlers() {
+    _channel.registerMethodCallHandlers([
+      //onCountChange begin
+      MethodHandler("onCountChange", RegisterParameter1(TestReq()),
+          (TarsMethodCall call) async {
+        logger.d("message");
+        var req = (call.arguments as InvokeArgument1).arg1 as TestReq;
+        _counter = req.id;
+        logger.d("get onCountChange call: $_counter");
+
+        setState(() {});
+      }),
+      //onCountChange end
+      //add more...
+    ]);
+  }
+
+  Future<void> _getCount() async {
+    var response = await _channel.invokeMethod<InvokeArgument1>(
+        "getCount", InvokeArgument0(), false, RegisterParameter1(TestRsp()));
+    var rsp = response!.arg1 as TestRsp;
+    _counter = rsp.id;
+    logger.d("getCount: $_counter");
+    setState(() {});
+  }
+
+  Future<void> _incrementCounter() async {
+    var req = TestReq();
+    req.id = 1;
+    var response = await _channel.invokeMethod<InvokeArgument1>("updateCount",
+        InvokeArgument1(req), false, RegisterParameter1(TestRsp()));
+    var rsp = response!.arg1 as TestRsp;
+    _counter = rsp.id;
+    logger.d("updateCount: $_counter");
+    setState(() {});
   }
 
   @override
